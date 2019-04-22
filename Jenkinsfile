@@ -30,6 +30,29 @@ pipeline {
                     }
                 }
             }
-        }         
+        }
+        stage('DeployToProduction') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    input "Deploy to production?"
+                    milestone(1)
+                    withCredentials([usernamePassword(credentialsId: 'webserver_login', usernameVariable: 'USERNAME', passwordVariable: 'USERPASS')]) {
+                        sh "sshpass -p '$USERPASS' ssh -o StrictHostKeyChecking=no $USERNAME@$ip_prod \"docker pull mahfuz93/train-schedule:${env.BUILD_NUMBER}\""
+                        try {
+                            sh "sshpass -p '$USERPASS' ssh -o StrictHostKeyChecking=no $USERNAME@$ip_prod \"docker stop train-schedule\""
+                            sh "sshpass -p '$USERPASS' ssh -o StrictHostKeyChecking=no $USERNAME@$ip_prod \"docker rm -r train-schedule\""
+                            }
+                        catch(err) {
+                            echo " error : $err"
+                            }
+                            sh "sshpass -p '$USERPASS' ssh -o StrictHostKeyChecking=no $USERNAME@$ip_prod \"docker run --restart --name train-schedule -p 8080:8080 -d mahfuz93/train-schedule:${env.BUILD_NUMBER} \""
+                        }
+                    }
+                }
+            }
+        }        
     }
 }
